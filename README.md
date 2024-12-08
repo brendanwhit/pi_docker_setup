@@ -35,12 +35,18 @@ three step process for the PI
 
 1. Add your user to the docker group.
 
-`$ sudo usermod -aG docker $USER`
+```bash
+sudo usermod -aG docker $USER
+```
 
 2. Log in to the new docker group (to avoid having to log out / log in again; but if not enough, try to reboot):
 
-`$ newgrp docker`
+```bash 
+newgrp docker
+```
 
 3. Check if docker can be run without root
 
-`$ docker run hello-world`
+```bash
+docker run hello-world
+```
