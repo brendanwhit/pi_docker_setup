@@ -1,0 +1,14 @@
+services:
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1004 # radarr user
+      - PGID=10001 # media group
+      - TZ=America/Denver
+    volumes:
+      - /home/brendan/docker/appdata/radarr:/config
+      - /server/media_server/:/media_server # give radarr access to all files on the media_server to allow hardlinks
+    ports:
+      - 7878:7878
+    restart: unless-stopped

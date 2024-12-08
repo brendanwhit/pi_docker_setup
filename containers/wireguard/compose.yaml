@@ -1,0 +1,19 @@
+services:
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE # see https://man7.org/linux/man-pages/man7/capabilities.7.html
+    environment:
+      - PUID=1000 # user brendan because I own the config files this container needs to access
+      - GUID=1000 # see above comment
+      - TZ=America/New_York
+    volumes:
+      - /home/brendan/docker/appdata/wireguard-client:/config # map the local config file from the appdata directory to the container config file. this file contains the server we want this container to connect to
+      - ./lib/modules:/lib/modules
+    ports:
+      - 8080:8080 # port-forward the qbittorrent port so we can access the web
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1 # required for client mode, not entirely sure what it does though
+    restart: unless-stopped

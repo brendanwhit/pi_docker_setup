@@ -1,0 +1,16 @@
+# breaking this out to a separate file to see if they can communicate across different compose files
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent
+    container_name: qbittorrent
+    network_mode: container:wireguard # connect to the wireguard container for networking
+    environment:
+      - PUID=1002 # qbittorrent user
+      - PGID=10001 # id of the media group that qbittorrent belongs to 
+      - TZ=America/Denver
+      - WEBUI_PORT=8080
+      - UMASK=007 # rwx access to the group so arr apps can create hardlinks
+    volumes:
+      - /home/brendan/docker/appdata/qbittorrent:/config
+      - /server/media_server/staging:/media_server/staging # give it access to the staging platform
+    restart: unless-stopped

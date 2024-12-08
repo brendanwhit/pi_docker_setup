@@ -1,0 +1,16 @@
+services:
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    network_mode: host
+    environment:
+      - PUID=1001 # id for the jellyfin user
+      - PGID=10001 # id for the media group
+      - TZ=America/Denver
+    volumes:
+      - /home/brendan/docker/appdata/jellyfin:/config
+      - /server/media_server/jellyfin:/data
+      - /dev/shm:/config/cache/transcodes # transcode to the RAM disk, docker path taken from dashboard path inside Jellyfin app
+        #    ports:
+        #      - 8096:8096
+    restart: unless-stopped

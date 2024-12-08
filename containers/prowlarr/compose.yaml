@@ -1,0 +1,13 @@
+services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1003 # prowlarr user id
+      - PGID=10001 # media user id
+      - TZ=America/Denver
+    volumes:
+      - /home/brendan/docker/appdata/prowlarr:/config # this folder is owned by prowlarr and the group media
+    ports:
+      - 9696:9696
+    restart: unless-stopped
