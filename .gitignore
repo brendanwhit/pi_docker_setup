@@ -1,5 +1,8 @@
 # exclude everything in the appdata folder
 appdata/**/*.*
 
+# exclude .env files
+containers/**/*.env
+
 # include only .gitkeep files to add folder structure
 !appdata/**/*.gitkeep

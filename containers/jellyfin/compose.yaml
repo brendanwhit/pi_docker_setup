@@ -1,8 +1,24 @@
 services:
+  tailscale-jellyfin:
+    image: tailscale/tailscale:latest
+    container_name: tailscale-jellyfin
+    hostname: tailscale-jellyfin
+    environment:
+      - TS_AUTHKEY=${TAILSCALE_AUTHKEY}
+        # - TS_SERVE_CONFIG=/home/brendan/docker/appdata/jellyfin
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+    volumes:
+      - /home/brendan/docker/appdata/tailscale:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+      - sys_module
+    restart: unless-stopped
+    network_mode: host
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
-    network_mode: host
     environment:
       - PUID=1001 # id for the jellyfin user
       - PGID=10001 # id for the media group
@@ -11,6 +27,7 @@ services:
       - /home/brendan/docker/appdata/jellyfin:/config
       - /server/media_server/jellyfin:/data
       - /dev/shm:/config/cache/transcodes # transcode to the RAM disk, docker path taken from dashboard path inside Jellyfin app
-        #    ports:
-        #      - 8096:8096
+    network_mode: service:tailscale-jellyfin
+    depends_on:
+      - tailscale-jellyfin
     restart: unless-stopped
