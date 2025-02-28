@@ -11,9 +11,10 @@ services:
       - TZ=America/New_York
     volumes:
       - /home/brendan/docker/appdata/wireguard-client:/config # map the local config file from the appdata directory to the container config file. this file contains the server we want this container to connect to
-      - ./lib/modules:/lib/modules
+      - ./lib/modules:/lib/modules 
     ports:
       - 8080:8080 # port-forward the qbittorrent port so we can access the web
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1 # required for client mode, not entirely sure what it does though
+        # network_mode: host
     restart: unless-stopped
