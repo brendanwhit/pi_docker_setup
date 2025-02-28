@@ -1,0 +1,137 @@
+#!/bin/bash
+
+# This script deletes torrent files that aren't hardlinked (which means that they are in Jellyfin and actively in use)
+# and records the total size of deleted files.
+
+# It is recommended to ensure that your incomplete torrents download to a directory that gets skipped
+# E.g in the script, we skip the incomplete/ directory when checking for hardlinks
+
+# below option needed to update total_size from within the while | read loop to be accessed out of the loop
+# see https://stackoverflow.com/questions/7313491/variables-getting-reset-after-the-while-read-loop-that-reads-from-a-pipeline
+# otherwise total_size gets reset to 0 for the last call at the end of the script
+shopt -s lastpipe # make the last pipeline comand run in *current shell*
+declare -i total_size=0
+
+# Function to record the size of deleted files
+record_size() {
+    local dir="$1"
+    local size=$(du -sb "$dir" | cut -f1)
+    total_size+=$size
+}
+
+# Function to print the total size in human readable format
+print_total_size() {
+    local formatted_size=$(numfmt --to=iec-i --suffix=B $total_size)
+    local qualifier=""
+    if [ "$dry_run" = true ]; then
+        qualifier="would be"
+    fi
+    echo "Total size of $qualifier deleted files: $formatted_size"
+}
+
+# Function to check if a directory should be ignored
+should_ignore_directory() {
+    local dir="$1"
+    case "$dir" in
+        *Subs*|*Featurettes*|*Other*|*incomplete*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Function to check if directory contains any files with multiple links. Works recursively.
+check_directory() {
+    local dir="$1"
+    for file in "$dir"/*; do
+        if [ -f "$file" ]; then
+            links=$(stat -c %h "$file")
+            if [ "$links" -gt 1 ]; then
+                return 1
+            fi
+        fi
+        if [ -d "$file" ]; then
+            check_directory "$file"
+            if [ $? -eq 1 ]; then
+                return 1
+            fi
+        fi
+    done
+    return 0
+}
+
+# Run the script without dry-run
+dry_run=false
+only_empty=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run)
+            dry_run=true
+            ;;
+        --only-empty)
+            only_empty=true
+            ;;
+    esac
+done
+
+# Warn if the script is not being run from /server/media_server/staging
+if [ "$dry_run" = false ]; then
+    if [[ "$(pwd)" != "/server/media_server/staging" ]]; then
+        echo "Warning: This script should only be run from /server/media_server/staging"
+        read -p "Would you like to continue anyway? (Y/n): " choice
+        choice=${choice:-Y}
+        if [[ "$choice" != "Y" && "$choice" != "y" ]]; then
+            exit 1
+        fi
+    fi
+    if [ "$EUID" -ne 0 ]; then
+        sudo "$0" "$@"
+        exit $?
+    fi
+
+    # rerun the script in dry-run mode
+    "$0" "$@" --dry-run
+    
+    # Ask the user if they want to proceed
+    read -p "Dry run complete. Do you want to proceed with actual deletion? (Y/n): " choice
+    choice=${choice:-Y}
+    if [[ "$choice" != "Y" && "$choice" != "y" ]]; then
+        echo "Aborting."
+        exit 1
+    fi
+fi
+
+
+# Iterate over all directories recursively
+find . -type d | while read -r dir; do
+    if should_ignore_directory "$dir"; then
+        continue
+    fi
+    # Check if the directory is empty
+    if [ -z "$(ls -A "$dir")" ]; then
+        if [ "$dry_run" = true ]; then
+            echo "Dry-run: Would delete empty directory: $dir"
+        else
+            echo "Deleting empty directory: $dir"
+            rm -rf "$dir"
+            continue
+        fi
+    fi
+    if [ "$only_empty" = false ]; then
+        check_directory "$dir"
+        if [ $? -eq 0 ]; then
+            record_size "$dir"
+            if [ "$dry_run" = true ]; then
+                echo "Dry-run: Would delete directory with no hardlinked files in tree: $dir"
+            else
+                echo "Deleting directory with no hardlinked files in tree: $dir"
+                rm -rf "$dir"
+            fi
+        fi
+    fi
+done
+
+print_total_size
